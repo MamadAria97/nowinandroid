@@ -74,11 +74,13 @@ import com.google.samples.apps.nowinandroid.core.designsystem.theme.GradientColo
 import com.google.samples.apps.nowinandroid.core.designsystem.theme.LocalGradientColors
 import com.google.samples.apps.nowinandroid.core.navigation.Navigator
 import com.google.samples.apps.nowinandroid.core.navigation.toEntries
-import com.google.samples.apps.nowinandroid.feature.bookmarks.impl.navigation.LocalSnackbarHostState
+import com.google.samples.apps.nowinandroid.core.ui.LocalSnackbarHostState
 import com.google.samples.apps.nowinandroid.feature.bookmarks.impl.navigation.bookmarksEntry
 import com.google.samples.apps.nowinandroid.feature.foryou.api.navigation.ForYouNavKey
 import com.google.samples.apps.nowinandroid.feature.foryou.impl.navigation.forYouEntry
 import com.google.samples.apps.nowinandroid.feature.interests.impl.navigation.interestsEntry
+import com.google.samples.apps.nowinandroid.feature.news.impl.navigation.newsDetailEntry
+import com.google.samples.apps.nowinandroid.feature.news.impl.navigation.newsEntry
 import com.google.samples.apps.nowinandroid.feature.search.api.navigation.SearchNavKey
 import com.google.samples.apps.nowinandroid.feature.search.impl.navigation.searchEntry
 import com.google.samples.apps.nowinandroid.feature.settings.impl.SettingsDialog
@@ -223,8 +225,9 @@ internal fun NiaApp(
                 if (appState.navigationState.currentKey in appState.navigationState.topLevelKeys) {
                     shouldShowTopAppBar = true
 
-                    val destination = TOP_LEVEL_NAV_ITEMS[appState.navigationState.currentTopLevelKey]
-                        ?: error("Top level nav item not found for ${appState.navigationState.currentTopLevelKey}")
+                    val destination =
+                        TOP_LEVEL_NAV_ITEMS[appState.navigationState.currentTopLevelKey]
+                            ?: error("Top level nav item not found for ${appState.navigationState.currentTopLevelKey}")
 
                     NiaTopAppBar(
                         titleRes = destination.titleTextId,
@@ -258,6 +261,8 @@ internal fun NiaApp(
 
                     val entryProvider = entryProvider {
                         forYouEntry(navigator)
+                        newsEntry(navigator)
+                        newsDetailEntry(navigator)
                         bookmarksEntry(navigator)
                         interestsEntry(navigator)
                         topicEntry(navigator)
