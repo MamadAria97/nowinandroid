@@ -16,8 +16,18 @@
 
 package com.google.samples.apps.nowinandroid.core.designsystem.component
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -27,6 +37,7 @@ import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -34,8 +45,9 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaul
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItemColors
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScope
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -214,32 +226,97 @@ fun NiaNavigationSuiteScaffold(
         ),
     )
 
-    NavigationSuiteScaffold(
-        navigationSuiteItems = {
-            NiaNavigationSuiteScope(
-                navigationSuiteScope = this,
-                navigationSuiteItemColors = navigationSuiteItemColors,
-            ).run(navigationSuiteItems)
-        },
-        layoutType = layoutType,
-        containerColor = Color.Transparent,
-        navigationSuiteColors = NavigationSuiteDefaults.colors(
-            navigationBarContentColor = NiaNavigationDefaults.navigationContentColor(),
-            navigationRailContainerColor = Color.Transparent,
-        ),
-        modifier = modifier,
-    ) {
-        content()
+    val suiteScope = NiaNavigationSuiteScope(navigationSuiteItemColors).apply(navigationSuiteItems)
+
+    if (layoutType == NavigationSuiteType.NavigationBar) {
+        Box(modifier = modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(
+                        WindowInsets.ime.union(
+                            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+                        ),
+                    ),
+            ) {
+                content()
+            }
+
+            Surface(
+                color = Color.Transparent,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),
+            ) {
+                NiaNavigationBar(
+                    modifier = Modifier.windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                        ),
+                    ),
+                ) {
+                    suiteScope.items.forEach { item ->
+                        NiaNavigationBarItem(
+                            selected = item.selected,
+                            onClick = item.onClick,
+                            icon = item.icon,
+                            selectedIcon = item.selectedIcon,
+                            label = item.label,
+                            modifier = item.modifier,
+                        )
+                    }
+                }
+            }
+        }
+    } else {
+        NavigationSuiteScaffold(
+            navigationSuiteItems = {
+                suiteScope.items.forEach { item ->
+                    item(
+                        selected = item.selected,
+                        onClick = item.onClick,
+                        icon = {
+                            if (item.selected) item.selectedIcon() else item.icon()
+                        },
+                        label = item.label,
+                        colors = navigationSuiteItemColors,
+                        modifier = item.modifier,
+                    )
+                }
+            },
+            layoutType = layoutType,
+            containerColor = Color.Transparent,
+            navigationSuiteColors = NavigationSuiteDefaults.colors(
+                navigationBarContentColor = NiaNavigationDefaults.navigationContentColor(),
+                navigationRailContainerColor = Color.Transparent,
+            ),
+            modifier = modifier,
+        ) {
+            content()
+        }
     }
 }
+
+/**
+ * Item specification for [NiaNavigationSuiteScope].
+ */
+data class NiaNavigationSuiteItem(
+    val selected: Boolean,
+    val onClick: () -> Unit,
+    val modifier: Modifier = Modifier,
+    val icon: @Composable () -> Unit,
+    val selectedIcon: @Composable () -> Unit = icon,
+    val label: @Composable (() -> Unit)? = null,
+)
 
 /**
  * A wrapper around [NavigationSuiteScope] to declare navigation items.
  */
 class NiaNavigationSuiteScope internal constructor(
-    private val navigationSuiteScope: NavigationSuiteScope,
     private val navigationSuiteItemColors: NavigationSuiteItemColors,
 ) {
+    internal val items = mutableListOf<NiaNavigationSuiteItem>()
+
     fun item(
         selected: Boolean,
         onClick: () -> Unit,
@@ -247,20 +324,18 @@ class NiaNavigationSuiteScope internal constructor(
         icon: @Composable () -> Unit,
         selectedIcon: @Composable () -> Unit = icon,
         label: @Composable (() -> Unit)? = null,
-    ) = navigationSuiteScope.item(
-        selected = selected,
-        onClick = onClick,
-        icon = {
-            if (selected) {
-                selectedIcon()
-            } else {
-                icon()
-            }
-        },
-        label = label,
-        colors = navigationSuiteItemColors,
-        modifier = modifier,
-    )
+    ) {
+        items.add(
+            NiaNavigationSuiteItem(
+                selected = selected,
+                onClick = onClick,
+                modifier = modifier,
+                icon = icon,
+                selectedIcon = selectedIcon,
+                label = label,
+            ),
+        )
+    }
 }
 
 @ThemePreviews
