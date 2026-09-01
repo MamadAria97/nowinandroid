@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
@@ -140,7 +139,7 @@ internal fun SearchScreen(
     onTopicClick: (String) -> Unit = {},
 ) {
     TrackScreenViewEvent(screenName = "Search")
-    Column(modifier = modifier) {
+    Column(modifier = modifier.fillMaxSize()) {
         Spacer(Modifier.windowInsetsTopHeight(WindowInsets.safeDrawing))
         SearchToolbar(
             onBackClick = onBackClick,
@@ -148,32 +147,15 @@ internal fun SearchScreen(
             onSearchTriggered = onSearchTriggered,
             searchQuery = searchQuery,
         )
-        when (searchResultUiState) {
-            SearchResultUiState.Loading,
-            SearchResultUiState.LoadFailed,
-            -> Unit
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            when (searchResultUiState) {
+                SearchResultUiState.Loading,
+                SearchResultUiState.LoadFailed,
+                -> Unit
 
-            SearchResultUiState.SearchNotReady -> SearchNotReadyBody()
-            SearchResultUiState.EmptyQuery,
-            -> {
-                if (recentSearchesUiState is RecentSearchQueriesUiState.Success) {
-                    RecentSearchesBody(
-                        onClearRecentSearches = onClearRecentSearches,
-                        onRecentSearchClicked = {
-                            onSearchQueryChanged(it)
-                            onSearchTriggered(it)
-                        },
-                        recentSearchQueries = recentSearchesUiState.recentQueries.map { it.query },
-                    )
-                }
-            }
-
-            is SearchResultUiState.Success -> {
-                if (searchResultUiState.isEmpty()) {
-                    EmptySearchResultBody(
-                        searchQuery = searchQuery,
-                        onInterestsClick = onInterestsClick,
-                    )
+                SearchResultUiState.SearchNotReady -> SearchNotReadyBody()
+                SearchResultUiState.EmptyQuery,
+                -> {
                     if (recentSearchesUiState is RecentSearchQueriesUiState.Success) {
                         RecentSearchesBody(
                             onClearRecentSearches = onClearRecentSearches,
@@ -184,21 +166,39 @@ internal fun SearchScreen(
                             recentSearchQueries = recentSearchesUiState.recentQueries.map { it.query },
                         )
                     }
-                } else {
-                    SearchResultBody(
-                        searchQuery = searchQuery,
-                        topics = searchResultUiState.topics,
-                        newsResources = searchResultUiState.newsResources,
-                        onSearchTriggered = onSearchTriggered,
-                        onTopicClick = onTopicClick,
-                        onNewsResourcesCheckedChanged = onNewsResourcesCheckedChanged,
-                        onNewsResourceViewed = onNewsResourceViewed,
-                        onFollowButtonClick = onFollowButtonClick,
-                    )
+                }
+
+                is SearchResultUiState.Success -> {
+                    if (searchResultUiState.isEmpty()) {
+                        EmptySearchResultBody(
+                            searchQuery = searchQuery,
+                            onInterestsClick = onInterestsClick,
+                        )
+                        if (recentSearchesUiState is RecentSearchQueriesUiState.Success) {
+                            RecentSearchesBody(
+                                onClearRecentSearches = onClearRecentSearches,
+                                onRecentSearchClicked = {
+                                    onSearchQueryChanged(it)
+                                    onSearchTriggered(it)
+                                },
+                                recentSearchQueries = recentSearchesUiState.recentQueries.map { it.query },
+                            )
+                        }
+                    } else {
+                        SearchResultBody(
+                            searchQuery = searchQuery,
+                            topics = searchResultUiState.topics,
+                            newsResources = searchResultUiState.newsResources,
+                            onSearchTriggered = onSearchTriggered,
+                            onTopicClick = onTopicClick,
+                            onNewsResourcesCheckedChanged = onNewsResourcesCheckedChanged,
+                            onNewsResourceViewed = onNewsResourceViewed,
+                            onFollowButtonClick = onFollowButtonClick,
+                        )
+                    }
                 }
             }
         }
-        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.safeDrawing))
     }
 }
 

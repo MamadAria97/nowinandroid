@@ -21,36 +21,39 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailDefaults
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuite
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItemColors
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScope
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastFirst
 import com.google.samples.apps.nowinandroid.core.designsystem.icon.NiaIcons
 import com.google.samples.apps.nowinandroid.core.designsystem.theme.NiaTheme
 
@@ -187,10 +190,10 @@ fun NiaNavigationRail(
 
 /**
  * Now in Android navigation suite scaffold with item and content slots.
- * Wraps Material 3 [NavigationSuiteScaffold].
+ * Wraps Material 3 [NavigationSuite] with a custom layout that properly handles keyboard (IME) overlay.
  *
- * @param modifier Modifier to be applied to the navigation suite scaffold.
  * @param navigationSuiteItems A slot to display multiple items via [NiaNavigationSuiteScope].
+ * @param modifier Modifier to be applied to the navigation suite scaffold.
  * @param windowAdaptiveInfo The window adaptive info.
  * @param content The app content inside the scaffold.
  */
@@ -226,97 +229,133 @@ fun NiaNavigationSuiteScaffold(
         ),
     )
 
-    val suiteScope = NiaNavigationSuiteScope(navigationSuiteItemColors).apply(navigationSuiteItems)
-
-    if (layoutType == NavigationSuiteType.NavigationBar) {
-        Box(modifier = modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(
-                        WindowInsets.ime.union(
-                            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
-                        ),
+    Surface(
+        modifier = modifier,
+        color = Color.Transparent,
+    ) {
+        NiaNavigationSuiteScaffoldLayout(
+            navigationSuite = {
+                NavigationSuite(
+                    layoutType = layoutType,
+                    colors = NavigationSuiteDefaults.colors(
+                        navigationBarContentColor = NiaNavigationDefaults.navigationContentColor(),
+                        navigationRailContainerColor = Color.Transparent,
                     ),
-            ) {
-                content()
-            }
-
-            Surface(
-                color = Color.Transparent,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth(),
-            ) {
-                NiaNavigationBar(
-                    modifier = Modifier.windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(
-                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                        ),
-                    ),
-                ) {
-                    suiteScope.items.forEach { item ->
-                        NiaNavigationBarItem(
-                            selected = item.selected,
-                            onClick = item.onClick,
-                            icon = item.icon,
-                            selectedIcon = item.selectedIcon,
-                            label = item.label,
-                            modifier = item.modifier,
-                        )
-                    }
-                }
-            }
-        }
-    } else {
-        NavigationSuiteScaffold(
-            navigationSuiteItems = {
-                suiteScope.items.forEach { item ->
-                    item(
-                        selected = item.selected,
-                        onClick = item.onClick,
-                        icon = {
-                            if (item.selected) item.selectedIcon() else item.icon()
-                        },
-                        label = item.label,
-                        colors = navigationSuiteItemColors,
-                        modifier = item.modifier,
-                    )
-                }
+                    content = {
+                        NiaNavigationSuiteScope(
+                            navigationSuiteScope = this,
+                            navigationSuiteItemColors = navigationSuiteItemColors,
+                        ).run(navigationSuiteItems)
+                    },
+                )
             },
             layoutType = layoutType,
-            containerColor = Color.Transparent,
-            navigationSuiteColors = NavigationSuiteDefaults.colors(
-                navigationBarContentColor = NiaNavigationDefaults.navigationContentColor(),
-                navigationRailContainerColor = Color.Transparent,
-            ),
-            modifier = modifier,
-        ) {
-            content()
+            content = {
+                Box(
+                    Modifier.consumeWindowInsets(
+                        when (layoutType) {
+                            NavigationSuiteType.NavigationBar ->
+                                NavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom)
+                                    .union(WindowInsets.ime.only(WindowInsetsSides.Bottom))
+                            NavigationSuiteType.NavigationRail ->
+                                NavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
+                                    .union(WindowInsets.ime.only(WindowInsetsSides.Bottom))
+                            NavigationSuiteType.NavigationDrawer ->
+                                DrawerDefaults.windowInsets.only(WindowInsetsSides.Start)
+                                    .union(WindowInsets.ime.only(WindowInsetsSides.Bottom))
+                            else -> WindowInsets.ime.only(WindowInsetsSides.Bottom)
+                        },
+                    ),
+                ) {
+                    content()
+                }
+            },
+        )
+    }
+}
+
+/**
+ * Layout for [NiaNavigationSuiteScaffold]'s content and navigation component.
+ *
+ * When [layoutType] is [NavigationSuiteType.NavigationBar]:
+ * - NavigationBar is anchored at the bottom of the screen.
+ * - When the keyboard (IME) opens, it overlays the bottom navigation bar without pushing the bar up.
+ * - The main content is dynamically measured so that it is positioned above the bottom obstruction:
+ *   `maxOf(navigationBarHeight, imeBottom)`. This ensures that content is never hidden behind the
+ *   keyboard and stays within the visible viewport.
+ */
+@Composable
+private fun NiaNavigationSuiteScaffoldLayout(
+    navigationSuite: @Composable () -> Unit,
+    layoutType: NavigationSuiteType,
+    content: @Composable () -> Unit,
+) {
+    val imeInsets = WindowInsets.ime
+
+    Layout(
+        content = {
+            Box(Modifier.layoutId("navigationSuite")) { navigationSuite() }
+            Box(Modifier.layoutId("content")) { content() }
+        },
+    ) { measurables, constraints ->
+        val looseConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+        val navigationPlaceable = measurables
+            .fastFirst { it.layoutId == "navigationSuite" }
+            .measure(looseConstraints)
+
+        val isNavigationBar = layoutType == NavigationSuiteType.NavigationBar
+        val layoutHeight = constraints.maxHeight
+        val layoutWidth = constraints.maxWidth
+        val imeBottomPx = imeInsets.getBottom(this)
+
+        val contentPlaceable = measurables
+            .fastFirst { it.layoutId == "content" }
+            .measure(
+                if (isNavigationBar) {
+                    val bottomSpace = maxOf(navigationPlaceable.height, imeBottomPx)
+                    constraints.copy(
+                        minHeight = (layoutHeight - bottomSpace).coerceAtLeast(0),
+                        maxHeight = (layoutHeight - bottomSpace).coerceAtLeast(0),
+                    )
+                } else {
+                    val sideWidth = if (layoutType == NavigationSuiteType.None) 0 else navigationPlaceable.width
+                    constraints.copy(
+                        minWidth = (layoutWidth - sideWidth).coerceAtLeast(0),
+                        maxWidth = (layoutWidth - sideWidth).coerceAtLeast(0),
+                        minHeight = (layoutHeight - imeBottomPx).coerceAtLeast(0),
+                        maxHeight = (layoutHeight - imeBottomPx).coerceAtLeast(0),
+                    )
+                },
+            )
+
+        layout(layoutWidth, layoutHeight) {
+            if (isNavigationBar) {
+                // Content is placed at top
+                contentPlaceable.placeRelative(0, 0)
+                // NavigationBar is always anchored at the very bottom of the screen
+                navigationPlaceable.placeRelative(
+                    0,
+                    layoutHeight - navigationPlaceable.height,
+                )
+            } else if (layoutType == NavigationSuiteType.None) {
+                contentPlaceable.placeRelative(0, 0)
+            } else {
+                // NavigationRail/Drawer is placed at start (0, 0)
+                navigationPlaceable.placeRelative(0, 0)
+                // Content is placed to the side of the navigation component
+                contentPlaceable.placeRelative(navigationPlaceable.width, 0)
+            }
         }
     }
 }
 
 /**
- * Item specification for [NiaNavigationSuiteScope].
- */
-data class NiaNavigationSuiteItem(
-    val selected: Boolean,
-    val onClick: () -> Unit,
-    val modifier: Modifier = Modifier,
-    val icon: @Composable () -> Unit,
-    val selectedIcon: @Composable () -> Unit = icon,
-    val label: @Composable (() -> Unit)? = null,
-)
-
-/**
  * A wrapper around [NavigationSuiteScope] to declare navigation items.
  */
 class NiaNavigationSuiteScope internal constructor(
+    private val navigationSuiteScope: NavigationSuiteScope,
     private val navigationSuiteItemColors: NavigationSuiteItemColors,
 ) {
-    internal val items = mutableListOf<NiaNavigationSuiteItem>()
-
     fun item(
         selected: Boolean,
         onClick: () -> Unit,
@@ -324,18 +363,20 @@ class NiaNavigationSuiteScope internal constructor(
         icon: @Composable () -> Unit,
         selectedIcon: @Composable () -> Unit = icon,
         label: @Composable (() -> Unit)? = null,
-    ) {
-        items.add(
-            NiaNavigationSuiteItem(
-                selected = selected,
-                onClick = onClick,
-                modifier = modifier,
-                icon = icon,
-                selectedIcon = selectedIcon,
-                label = label,
-            ),
-        )
-    }
+    ) = navigationSuiteScope.item(
+        selected = selected,
+        onClick = onClick,
+        icon = {
+            if (selected) {
+                selectedIcon()
+            } else {
+                icon()
+            }
+        },
+        label = label,
+        colors = navigationSuiteItemColors,
+        modifier = modifier,
+    )
 }
 
 @ThemePreviews

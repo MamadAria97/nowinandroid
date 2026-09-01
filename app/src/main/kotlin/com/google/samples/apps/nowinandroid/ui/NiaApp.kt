@@ -249,13 +249,15 @@ internal fun NiaApp(
 
                 Box(
                     // Workaround for https://issuetracker.google.com/338478720
-                    modifier = Modifier.consumeWindowInsets(
-                        if (shouldShowTopAppBar) {
-                            WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
-                        } else {
-                            WindowInsets(0, 0, 0, 0)
-                        },
-                    ),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .consumeWindowInsets(
+                            if (shouldShowTopAppBar) {
+                                WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
+                            } else {
+                                WindowInsets(0, 0, 0, 0)
+                            },
+                        ),
                 ) {
                     val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>()
 
