@@ -160,6 +160,7 @@ internal fun NiaApp(
     val snackbarHostState = LocalSnackbarHostState.current
 
     val navigator = remember { Navigator(appState.navigationState) }
+    val isTopLevel = appState.navigationState.currentKey in appState.navigationState.topLevelKeys
 
     NiaNavigationSuiteScaffold(
         navigationSuiteItems = {
@@ -189,6 +190,7 @@ internal fun NiaApp(
             }
         },
         windowAdaptiveInfo = windowAdaptiveInfo,
+        showNavigationSuite = isTopLevel,
     ) {
         Scaffold(
             modifier = modifier.semantics {
@@ -220,11 +222,7 @@ internal fun NiaApp(
                     ),
             ) {
                 // Only show the top app bar on top level destinations.
-                var shouldShowTopAppBar = false
-
-                if (appState.navigationState.currentKey in appState.navigationState.topLevelKeys) {
-                    shouldShowTopAppBar = true
-
+                if (isTopLevel) {
                     val destination =
                         TOP_LEVEL_NAV_ITEMS[appState.navigationState.currentTopLevelKey]
                             ?: error("Top level nav item not found for ${appState.navigationState.currentTopLevelKey}")
@@ -252,7 +250,7 @@ internal fun NiaApp(
                     modifier = Modifier
                         .fillMaxSize()
                         .consumeWindowInsets(
-                            if (shouldShowTopAppBar) {
+                            if (isTopLevel) {
                                 WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
                             } else {
                                 WindowInsets(0, 0, 0, 0)
